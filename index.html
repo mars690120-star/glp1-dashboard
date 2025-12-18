@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GLP-1 RAs & GIP/GLP-1 臨床藥物資訊圖表</title>
+    <style>
+        :root {
+            --primary-color: #0056b3; /* 醫療深藍 */
+            --secondary-color: #00a8cc; /* 科技淺藍 */
+            --bg-color: #f0f2f5;
+            --card-bg: #ffffff;
+            --text-main: #333333;
+            --text-light: #666666;
+            --danger-color: #dc3545; /* 懷孕分級X */
+            --warning-color: #ffc107; /* 懷孕分級C */
+            --success-color: #28a745;
+            --border-radius: 8px;
+            --shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+
+        * { box-sizing: border-box; font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif; }
+
+        body {
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 20px;
+            color: var(--text-main);
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+        }
+
+        header h1 { margin: 0; font-size: 1.8rem; letter-spacing: 1px; }
+        header p { margin: 10px 0 0; opacity: 0.9; font-size: 0.9rem; }
+
+        /* Filter Section */
+        .filters {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            background: white;
+            border: 1px solid #ddd;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            color: var(--text-light);
+        }
+
+        .filter-btn:hover, .filter-btn.active {
+            background-color: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+            box-shadow: 0 2px 5px rgba(0,86,179,0.3);
+        }
+
+        /* Grid Layout */
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        /* Card Style */
+        .drug-card {
+            background: var(--card-bg);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            border-left: 5px solid var(--secondary-color);
+            transition: transform 0.2s ease;
+            position: relative;
+        }
+
+        .drug-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 15px rgba(0,0,0,0.1);
+        }
+
+        .card-header {
+            padding: 15px 20px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .brand-name {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+
+        .generic-name {
+            font-size: 0.85rem;
+            color: var(--text-light);
+            font-style: italic;
+        }
+
+        .card-body {
+            padding: 20px;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+        }
+
+        .label { color: #888; }
+        .value { font-weight: 500; text-align: right; }
+
+        .drug-code {
+            background: #f8f9fa;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.8rem;
+            color: #555;
+            display: inline-block;
+            margin-top: 5px;
+        }
+
+        /* Pregnancy Category Badge */
+        .preg-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            font-weight: bold;
+            font-size: 1rem;
+            color: white;
+        }
+        
+        .preg-C { background-color: var(--warning-color); color: #333; }
+        .preg-X { background-color: var(--danger-color); }
+
+        /* Type Icon (Injection vs Oral) */
+        .type-icon {
+            font-size: 1.2rem;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            color: #999;
+            font-size: 0.8rem;
+            border-top: 1px solid #ddd;
+            padding-top: 20px;
+        }
+
+        /* Animation for filtering */
+        .hidden { display: none; }
+
+        @media (max-width: 600px) {
+            .grid-container { grid-template-columns: 1fr; }
+            header h1 { font-size: 1.4rem; }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>GLP-1 / GIP 受體促效劑一覽表</h1>
+    <p>Clinical Reference for Weight Management & Diabetes</p>
+</header>
+
+<div class="filters">
+    <button class="filter-btn active" onclick="filterData('all')">顯示全部</button>
+    <button class="filter-btn" onclick="filterData('Liraglutide')">Liraglutide (善纖達)</button>
+    <button class="filter-btn" onclick="filterData('Semaglutide')">Semaglutide (瘦瘦針/錠)</button>
+    <button class="filter-btn" onclick="filterData('Tirzepatide')">Tirzepatide (雙重機轉)</button>
+    <button class="filter-btn" onclick="filterData('Oral')">口服劑型</button>
+    <button class="filter-btn" onclick="filterData('PregX')" style="color:var(--danger-color); border-color:var(--danger-color)">懷孕分級 X</button>
+</div>
+
+<div class="grid-container" id="cardContainer">
+    </div>
+
+<footer>
+    <p>資料來源：藥品仿單彙整 | Designed for Clinical Pharmacist Review</p>
+    <p>注意：本表僅供醫療人員參考，處方相關資訊請依最新仿單為準。</p>
+</footer>
+
+<script>
+    // Data Source extracted from user image
+    const drugs = [
+        {
+            generic: "Dulaglutide",
+            code: "CDULAGL",
+            brand: "Trulicity",
+            chinese: "易週糖注射劑",
+            spec: "1.5mg/0.5ml/single dose pen",
+            preg: "C",
+            type: "injection"
+        },
+        {
+            generic: "Liraglutide",
+            code: "CLIRAG1",
+            brand: "Saxenda",
+            chinese: "善纖達注射液",
+            spec: "18mg/3ml/pen",
+            preg: "C",
+            type: "injection"
+        },
+        {
+            generic: "Liraglutide",
+            code: "CLIRAGL",
+            brand: "Victoza",
+            chinese: "胰妥善注射液",
+            spec: "18mg/3ml/pen",
+            preg: "C",
+            type: "injection"
+        },
+        {
+            generic: "Semaglutide",
+            code: "CSEMAGL",
+            brand: "Ozempic",
+            chinese: "胰妥讚注射劑",
+            spec: "4mg/3ml/pen",
+            preg: "X",
+            type: "injection"
+        },
+        {
+            generic: "Semaglutide",
+            code: "CSEMAG3",
+            brand: "Wegovy",
+            chinese: "週纖達諾特筆",
+            spec: "1mg/dose, 4dose/pen",
+            preg: "X",
+            type: "injection"
+        },
+        {
+            generic: "Semaglutide",
+            code: "CSEMAG1",
+            brand: "Wegovy",
+            chinese: "週纖達諾特筆",
+            spec: "2.4mg/dose, 4dose/pen",
+            preg: "X",
+            type: "injection"
+        },
+        {
+            generic: "Tirzepatide",
+            code: "CTIRZEP",
+            brand: "Mounjaro",
+            chinese: "猛健樂注射劑",
+            spec: "10mg/0.6ml/dose",
+            preg: "X",
+            type: "injection"
+        },
+        {
+            generic: "Tirzepatide",
+            code: "CTIRZE2",
+            brand: "Mounjaro",
+            chinese: "猛健樂注射劑",
+            spec: "5mg/0.6ml/dose",
+            preg: "X",
+            type: "injection"
+        },
+        {
+            generic: "Semaglutide",
+            code: "KSEMAG2",
+            brand: "Rybelsus",
+            chinese: "瑞倍適錠",
+            spec: "14mg/tablet, 30tab",
+            preg: "X",
+            type: "oral"
+        },
+        {
+            generic: "Semaglutide",
+            code: "KSEMAG1",
+            brand: "Rybelsus",
+            chinese: "瑞倍適錠",
+            spec: "7mg/tablet, 30tab",
+            preg: "X",
+            type: "oral"
+        }
+    ];
+
+    const container = document.getElementById('cardContainer');
+    const filterBtns = document.querySelectorAll('.filter-btn');
+
+    function renderCards(data) {
+        container.innerHTML = '';
+        data.forEach(drug => {
+            const isInjection = drug.type === 'injection';
+            const icon = isInjection ? '💉' : '💊';
+            const typeText = isInjection ? '注射劑' : '口服錠劑';
+            const pregClass = drug.preg === 'X' ? 'preg-X' : 'preg-C';
+            
+            // Adjust border color based on Generic name for quick grouping
+            let borderColor = '#00a8cc'; // Default Semaglutide
+            if(drug.generic === 'Liraglutide') borderColor = '#6f42c1'; // Purple
+            if(drug.generic === 'Tirzepatide') borderColor = '#e83e8c'; // Pink
+            if(drug.generic === 'Dulaglutide') borderColor = '#fd7e14'; // Orange
+
+            const card = document.createElement('div');
+            card.className = 'drug-card';
+            card.style.borderLeftColor = borderColor;
+            
+            card.innerHTML = `
+                <div class="card-header">
+                    <div>
+                        <div class="brand-name">${drug.brand} <span style="font-size:0.8rem; color:#666;">${drug.chinese}</span></div>
+                        <div class="generic-name">${drug.generic}</div>
+                    </div>
+                    <div class="preg-badge ${pregClass}" title="懷孕分級: ${drug.preg}">${drug.preg}</div>
+                </div>
+                <div class="card-body">
+                    <div class="info-row">
+                        <span class="label">劑型分類</span>
+                        <span class="value"><span class="type-icon">${icon}</span>${typeText}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="label">規格含量</span>
+                        <span class="value">${drug.spec}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="label">藥品代碼</span>
+                        <span class="drug-code">${drug.code}</span>
+                    </div>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+    }
+
+    function filterData(criteria) {
+        // Update active button state
+        filterBtns.forEach(btn => btn.classList.remove('active'));
+        event.target.classList.add('active');
+
+        let filtered = [];
+        if (criteria === 'all') {
+            filtered = drugs;
+        } else if (criteria === 'Oral') {
+            filtered = drugs.filter(d => d.type === 'oral');
+        } else if (criteria === 'PregX') {
+            filtered = drugs.filter(d => d.preg === 'X');
+        } else {
+            filtered = drugs.filter(d => d.generic === criteria);
+        }
+        renderCards(filtered);
+    }
+
+    // Initial render
+    renderCards(drugs);
+
+</script>
+
+</body>
+</html>
